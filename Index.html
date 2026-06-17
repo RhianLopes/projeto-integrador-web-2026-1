@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedido de Suprimentos</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── BASE MOBILE-FIRST ── */
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    background: #f0f2f5;
+    color: #1a1a2e;
+    min-height: 100vh;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* HEADER */
+  .header {
+    background: #1a1a2e;
+    color: #fff;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  }
+  .header h1 { font-size: clamp(.88rem, 3.5vw, 1.1rem); font-weight: 700; line-height: 1.2; }
+  .header .badge {
+    margin-left: auto;
+    background: #e8a838;
+    color: #1a1a2e;
+    font-size: .8rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  /* STEPPER */
+  .stepper {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    padding: 16px 12px 0;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .step-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+  .step-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: #d0d5dd;
+    z-index: 0;
+  }
+  .step-item.done:not(:last-child)::after { background: #2563eb; }
+  .step-circle {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: 2px solid #d0d5dd;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .8rem; font-weight: 700;
+    position: relative; z-index: 1;
+    color: #6b7280;
+    transition: all .2s;
+  }
+  .step-item.active .step-circle { border-color: #2563eb; background: #2563eb; color: #fff; }
+  .step-item.done .step-circle { border-color: #2563eb; background: #2563eb; color: #fff; }
+  .step-label { font-size: .7rem; margin-top: 5px; color: #6b7280; text-align: center; line-height: 1.2; }
+  .step-item.active .step-label { color: #2563eb; font-weight: 700; }
+
+  @media (max-width: 374px) {
+    .stepper { padding: 12px 4px 0; }
+    .step-circle { width: 26px; height: 26px; font-size: .72rem; }
+    .step-item:not(:last-child)::after { top: 13px; }
+    .step-label { font-size: .6rem; }
+    .container { padding: 0 8px 80px; }
+  }
+
+  /* CONTAINER */
+  .container {
+    max-width: 720px;
+    margin: 16px auto;
+    padding: 0 12px 80px;
+  }
+
+  /* CARD */
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 20px 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 1.1rem; font-weight: 700;
+    color: #1a1a2e; margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f0f2f5;
+  }
+
+  /* FORMULÁRIO */
+  label { display: block; font-size: 1rem; font-weight: 600; margin-bottom: 8px; color: #374151; }
+  input[type=text], input[type=date], textarea, select {
+    width: 100%; padding: 13px 14px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 16px;
+    transition: border-color .2s;
+    outline: none;
+    background: #fafafa;
+    -webkit-appearance: none;
+    appearance: none;
+    color: #1a1a2e;
+  }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 40px;
+    cursor: pointer;
+  }
+  input[type=text]:focus, input[type=date]:focus, textarea:focus, select:focus {
+    border-color: #2563eb; background: #fff;
+  }
+  .form-row { margin-bottom: 18px; }
+  .form-grid { display: grid; grid-template-columns: 1fr; gap: 0; }
+
+  /* BUSCA */
+  .search-wrap { position: relative; margin-bottom: 16px; }
+  .search-wrap input { padding-left: 40px; }
+  .search-icon {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: #9ca3af; font-size: 1.1rem;
+  }
+
+  /* ABAS DE CATEGORIA — quebra para linha de baixo em telas pequenas */
+  .cat-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .cat-tab {
+    padding: 8px 16px; border-radius: 22px;
+    border: 1.5px solid #d1d5db;
+    background: #fff; font-size: .95rem; cursor: pointer;
+    transition: all .15s; color: #374151; font-weight: 500;
+    white-space: nowrap;
+    min-height: 44px; display: flex; align-items: center;
+  }
+  .cat-tab.active { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 700; }
+
+  /* LISTA DE PRODUTOS */
+  .product-list { display: flex; flex-direction: column; gap: 2px; }
+  .product-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 12px; border-radius: 10px;
+    cursor: pointer; transition: background .1s;
+    min-height: 56px;
+  }
+  .product-item:hover { background: #f5f7ff; }
+  .product-item.selected { background: #eff6ff; }
+  .product-item input[type=checkbox] {
+    width: 22px; height: 22px; accent-color: #2563eb; flex-shrink: 0; cursor: pointer;
+  }
+  .product-info { flex: 1; min-width: 0; }
+  .product-name { font-size: 1rem; font-weight: 500; line-height: 1.3; }
+  .product-meta { font-size: .85rem; color: #6b7280; margin-top: 2px; }
+  .und-badge {
+    font-size: .8rem; font-weight: 700; background: #f0f2f5;
+    color: #374151; padding: 4px 10px; border-radius: 12px; flex-shrink: 0;
+  }
+
+  /* QUANTIDADES */
+  .qty-list { display: flex; flex-direction: column; gap: 10px; }
+  .qty-item {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 14px; border-radius: 10px;
+    border: 1px solid #e5e7eb;
+  }
+  .qty-product { }
+  .qty-product .product-name { font-size: 1rem; }
+  .qty-input {
+    width: 100%; padding: 12px 14px;
+    border: 1.5px solid #d1d5db; border-radius: 8px;
+    font-size: 18px; font-weight: 700;
+    text-align: center; min-height: 52px;
+    -webkit-appearance: none; appearance: none;
+  }
+  .qty-input:focus { border-color: #2563eb; outline: none; }
+
+  /* BUDGET BAR — calculadora de orçamento */
+  .budget-bar {
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    border: 1.5px solid;
+    transition: background .3s, border-color .3s;
+  }
+  .budget-bar.neutral  { background: #f8fafc; border-color: #e5e7eb; }
+  .budget-bar.green    { background: #dcfce7; border-color: #16a34a; }
+  .budget-bar.yellow   { background: #fef9c3; border-color: #ca8a04; }
+  .budget-bar.orange   { background: #ffedd5; border-color: #ea580c; }
+  .budget-bar.red      { background: #fee2e2; border-color: #dc2626; }
+
+  .budget-total {
+    font-size: 1.25rem; font-weight: 800; margin-bottom: 4px;
+  }
+  .budget-bar.neutral .budget-total  { color: #1a1a2e; }
+  .budget-bar.green .budget-total    { color: #15803d; }
+  .budget-bar.yellow .budget-total   { color: #92400e; }
+  .budget-bar.orange .budget-total   { color: #c2410c; }
+  .budget-bar.red .budget-total      { color: #b91c1c; }
+
+  .budget-meta { font-size: .88rem; color: #6b7280; margin-bottom: 8px; }
+  .budget-bar.green .budget-meta  { color: #166534; }
+  .budget-bar.yellow .budget-meta { color: #713f12; }
+  .budget-bar.orange .budget-meta { color: #9a3412; }
+  .budget-bar.red .budget-meta    { color: #991b1b; }
+
+  .budget-track {
+    height: 8px; background: rgba(0,0,0,.1); border-radius: 4px; overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .budget-fill {
+    height: 100%; border-radius: 4px;
+    transition: width .4s ease;
+    max-width: 100%;
+  }
+  .budget-bar.green .budget-fill  { background: #16a34a; }
+  .budget-bar.yellow .budget-fill { background: #ca8a04; }
+  .budget-bar.orange .budget-fill { background: #ea580c; }
+  .budget-bar.red .budget-fill    { background: #dc2626; }
+
+  .budget-label { font-size: .82rem; font-weight: 700; }
+  .budget-bar.green .budget-label  { color: #15803d; }
+  .budget-bar.yellow .budget-label { color: #92400e; }
+  .budget-bar.orange .budget-label { color: #c2410c; }
+  .budget-bar.red .budget-label    { color: #b91c1c; }
+
+  .budget-note { font-size: .75rem; color: #9ca3af; margin-top: 6px; }
+
+  /* REVISÃO */
+  .review-header {
+    display: grid; grid-template-columns: 1fr;
+    gap: 10px; margin-bottom: 16px;
+  }
+  .review-info { background: #f8fafc; border-radius: 10px; padding: 14px; }
+  .review-info .label { font-size: .8rem; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .review-info .value { font-size: 1.05rem; font-weight: 700; margin-top: 4px; color: #1a1a2e; }
+
+  .review-table { width: 100%; border-collapse: collapse; font-size: .95rem; min-width: 320px; }
+  .review-table th {
+    text-align: left; padding: 10px 10px;
+    background: #f8fafc; color: #6b7280;
+    font-size: .8rem; text-transform: uppercase; letter-spacing: .04em;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .review-table td { padding: 11px 10px; border-bottom: 1px solid #f0f2f5; font-size: .95rem; }
+  .review-table tr:last-child td { border-bottom: none; }
+  .cat-header td {
+    background: #1a1a2e; color: #fff;
+    font-size: .8rem; font-weight: 700;
+    padding: 8px 10px; text-transform: uppercase; letter-spacing: .05em;
+  }
+  .total-row td {
+    background: #f0f2f5; font-weight: 700;
+    border-top: 2px solid #d1d5db;
+  }
+
+  /* CONFIRMAÇÃO */
+  .success-box { text-align: center; padding: 36px 16px; }
+  .success-icon { font-size: 4rem; margin-bottom: 16px; }
+  .success-title { font-size: 1.5rem; font-weight: 700; color: #1a1a2e; margin-bottom: 10px; }
+  .success-sub { color: #6b7280; font-size: 1rem; margin-bottom: 24px; }
+  .success-detail {
+    background: #f8fafc; border-radius: 10px; padding: 16px;
+    display: block; text-align: left; font-size: .95rem;
+    width: 100%; max-width: 400px; margin: 0 auto 28px;
+  }
+  .success-detail p { margin-bottom: 6px; line-height: 1.5; }
+  .success-detail strong { color: #1a1a2e; }
+
+  /* BOTÕES */
+  .btn-row {
+    display: flex; flex-direction: column-reverse; gap: 10px;
+    margin-top: 24px;
+  }
+  .btn {
+    width: 100%; padding: 15px 20px; border-radius: 10px;
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+    border: none; transition: all .15s;
+    min-height: 52px; text-align: center;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+  .btn-secondary { background: #f0f2f5; color: #374151; }
+  .btn-secondary:hover { background: #e5e7eb; }
+  .btn-success { background: #16a34a; color: #fff; }
+  .btn-success:hover { background: #15803d; }
+  .btn-outline { background: #fff; color: #2563eb; border: 2px solid #2563eb; }
+  .btn-outline:hover { background: #eff6ff; }
+
+  .alert { padding: 12px 14px; border-radius: 10px; font-size: .95rem; margin-bottom: 14px; line-height: 1.4; }
+  .alert-warn { background: #fefce8; color: #92400e; border: 1px solid #fde68a; }
+  .alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+
+  .cat-section { margin-bottom: 24px; }
+  .cat-section-title {
+    font-size: .85rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: #6b7280;
+    padding: 8px 0; margin-bottom: 6px;
+    border-bottom: 2px solid #f0f2f5;
+  }
+
+  .empty-state { text-align: center; padding: 40px 16px; color: #9ca3af; font-size: 1rem; }
+
+  .loading {
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; padding: 48px 16px; color: #6b7280; font-size: 1rem;
+  }
+  .spinner {
+    width: 26px; height: 26px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .counter-bar {
+    background: #eff6ff; border-radius: 10px; padding: 12px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; font-size: 1rem;
+  }
+  .counter-bar strong { color: #2563eb; }
+
+  /* ── DESKTOP (≥ 600px) ── */
+  @media (min-width: 600px) {
+    .header { padding: 14px 24px; }
+    .stepper { padding: 20px 16px 0; }
+    .step-circle { width: 28px; height: 28px; }
+    .step-label { font-size: .72rem; }
+    .container { margin: 20px auto; padding: 0 16px 80px; }
+    .card { padding: 28px; }
+    .form-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+    .review-header { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .qty-item { flex-direction: row; align-items: center; }
+    .qty-product { flex: 1; min-width: 160px; }
+    .qty-input { width: 140px; }
+    .btn-row { flex-direction: row; justify-content: flex-end; }
+    .btn { width: auto; min-width: 140px; padding: 12px 28px; }
+  }
+
+  @media (max-width: 599px) {
+    .review-table { font-size: .88rem; }
+    .review-table th, .review-table td { padding: 9px 8px; }
+  }
+
+  @media (min-width: 768px) {
+    .header { padding: 16px 32px; }
+    .container { max-width: 840px; padding: 0 24px 80px; }
+    .card { padding: 32px; }
+    .qty-item { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Pedido de Suprimentos</h1>
+  <span class="badge" id="stepBadge">Carregando...</span>
+</div>
+
+<div class="stepper" id="stepper">
+  <div class="step-item active" data-step="1">
+    <div class="step-circle">1</div>
+    <div class="step-label">Cabeçalho</div>
+  </div>
+  <div class="step-item" data-step="2">
+    <div class="step-circle">2</div>
+    <div class="step-label">Seleção</div>
+  </div>
+  <div class="step-item" data-step="3">
+    <div class="step-circle">3</div>
+    <div class="step-label">Qtd.</div>
+  </div>
+  <div class="step-item" data-step="4">
+    <div class="step-circle">4</div>
+    <div class="step-label">Revisão</div>
+  </div>
+  <div class="step-item" data-step="5">
+    <div class="step-circle">&#10003;</div>
+    <div class="step-label">Envio</div>
+  </div>
+</div>
+
+<div class="container" id="app">
+  <div class="loading"><div class="spinner"></div>Carregando...</div>
+</div>
+
+<script>
+var state = {
+  step: 1,
+  unidade: '',
+  unitMaxValue: 0,
+  dataPedido: '',
+  dataEntrega: '',
+  observacoes: '',
+  userEmail: '',
+  catalog: [],
+  unidades: [],
+  precos: [],
+  selected: {},
+  quantities: {},
+  lastResult: null
+};
+
+// Lookup maps built from precos
+var precosMap = {};      // codigo (inteiro) → precoMedio
+var precosNameMap = {};  // nome.toUpperCase() → precoMedio
+
+function itemKey(item) {
+  return item.cod + '||' + item.nome;
+}
+
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function fmtDate(d) {
+  if (!d) return '-';
+  var parts = d.split('-');
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+function fmtMoeda(v) {
+  return 'R$ ' + v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function parseQty(v) {
+  return parseFloat(String(v).replace(',', '.')) || 0;
+}
+
+function buildPrecosMap(precos) {
+  precosMap = {};
+  precosNameMap = {};
+  precos.forEach(function(p) {
+    var cod = parseInt(p.codigo);
+    if (!isNaN(cod) && cod > 0) {
+      precosMap[String(cod)] = p.precoMedio;
+    }
+    if (p.nome) {
+      precosNameMap[p.nome.toUpperCase()] = p.precoMedio;
+    }
+  });
+}
+
+function getItemPrice(item) {
+  var cod = parseInt(item.cod);
+  if (!isNaN(cod) && cod > 0 && precosMap[String(cod)]) {
+    return precosMap[String(cod)];
+  }
+  return precosNameMap[item.nome.toUpperCase()] || 0;
+}
+
+function calcTotal() {
+  var total = 0;
+  var hasPrice = false;
+  Object.values(state.selected).forEach(function(item) {
+    var key = itemKey(item);
+    var qty = parseQty(state.quantities[key] || 0);
+    var price = getItemPrice(item);
+    if (price > 0 && qty > 0) {
+      total += price * qty;
+      hasPrice = true;
+    }
+  });
+  return { total: total, hasPrice: hasPrice };
+}
+
+function getBudgetClass(pct) {
+  if (pct <= 70)  return 'green';
+  if (pct <= 90)  return 'yellow';
+  if (pct <= 100) return 'orange';
+  return 'red';
+}
+
+function getBudgetLabel(pct) {
+  if (pct <= 70)  return '&#128994; Ótimo! Pedido econômico';
+  if (pct <= 90)  return '&#128993; Bom';
+  if (pct <= 100) return '&#128992; Atenção: próximo do limite';
+  return '&#128308; Acima do limite máximo';
+}
+
+function renderBudgetBar() {
+  var calc = calcTotal();
+  var total = calc.total;
+  var max = state.unitMaxValue || 0;
+
+  var cssClass = 'neutral';
+  var metaHtml = '';
+  var trackHtml = '';
+  var labelHtml = '';
+  var noteHtml = '';
+
+  if (max > 0) {
+    var pct = (total / max) * 100;
+    cssClass = getBudgetClass(pct);
+    var fillW = Math.min(pct, 100).toFixed(1);
+    metaHtml = '<div class="budget-meta">Limite: ' + fmtMoeda(max) + ' &nbsp;•&nbsp; ' + pct.toFixed(1) + '% do limite</div>';
+    trackHtml = '<div class="budget-track"><div class="budget-fill" style="width:' + fillW + '%"></div></div>';
+    labelHtml = '<div class="budget-label">' + getBudgetLabel(pct) + '</div>';
+  } else {
+    metaHtml = '<div class="budget-meta">Sem limite máximo definido para esta unidade</div>';
+  }
+
+  if (calc.hasPrice) {
+    noteHtml = '<div class="budget-note">* Produtos sem preço cadastrado não são contabilizados</div>';
+  }
+
+  return '<div class="budget-bar ' + cssClass + '" id="budgetBar">' +
+    '<div class="budget-total">Total do pedido: ' + fmtMoeda(total) + '</div>' +
+    metaHtml + trackHtml + labelHtml + noteHtml +
+    '</div>';
+}
+
+function updateBudgetBar() {
+  var el = document.getElementById('budgetBar');
+  if (!el) return;
+  var tmp = document.createElement('div');
+  tmp.innerHTML = renderBudgetBar();
+  var newBar = tmp.firstChild;
+  el.parentNode.replaceChild(newBar, el);
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+
+function render() {
+  updateStepper();
+  document.getElementById('stepBadge').textContent = 'Etapa ' + state.step + ' de 5';
+  var app = document.getElementById('app');
+  if      (state.step === 1) app.innerHTML = renderStep1();
+  else if (state.step === 2) app.innerHTML = renderStep2();
+  else if (state.step === 3) app.innerHTML = renderStep3();
+  else if (state.step === 4) app.innerHTML = renderStep4();
+  else if (state.step === 5) app.innerHTML = renderStep5();
+  bindStep();
+}
+
+function updateStepper() {
+  document.querySelectorAll('.step-item').forEach(function(el) {
+    var s = parseInt(el.dataset.step);
+    el.classList.remove('active','done');
+    if (s === state.step) el.classList.add('active');
+    else if (s < state.step) el.classList.add('done');
+  });
+}
+
+// ─── STEP 1 ───────────────────────────────────────────────────────────────────
+
+function renderStep1() {
+  var opts = '<option value="" disabled' + (!state.unidade ? ' selected' : '') + '>Selecione a unidade...</option>';
+  state.unidades.forEach(function(u) {
+    var sel = state.unidade === u.nome ? ' selected' : '';
+    opts += '<option value="' + esc(u.nome) + '"' + sel + '>' + esc(u.nome) + '</option>';
+  });
+
+  return '<div class="card">' +
+    '<div class="card-title">Informações do Pedido</div>' +
+    '<div class="form-row"><label>Unidade *</label>' +
+    '<select id="f-unidade">' + opts + '</select></div>' +
+    '<div class="form-grid">' +
+    '<div class="form-row"><label>Data do Pedido *</label>' +
+    '<input type="date" id="f-dataPedido" value="' + (state.dataPedido || today()) + '"></div>' +
+    '<div class="form-row"><label>Data de Entrega *</label>' +
+    '<input type="date" id="f-dataEntrega" value="' + esc(state.dataEntrega) + '"></div>' +
+    '</div>' +
+    '<div class="btn-row"><button class="btn btn-primary" onclick="goStep2()">Próximo →</button></div>' +
+    '</div>';
+}
+
+function goStep2() {
+  var sel = document.getElementById('f-unidade');
+  var u = sel ? sel.value.trim() : '';
+  var dp = document.getElementById('f-dataPedido').value;
+  var de = document.getElementById('f-dataEntrega').value;
+  if (!u) return alert('Selecione a unidade.');
+  if (!dp) return alert('Informe a data do pedido.');
+  if (!de) return alert('Informe a data de entrega.');
+  if (de < dp) return alert('A data de entrega não pode ser anterior à data do pedido.');
+
+  state.unidade = u;
+  state.dataPedido = dp;
+  state.dataEntrega = de;
+
+  // lookup max value for this unit
+  var found = state.unidades.filter(function(x) { return x.nome === u; })[0];
+  state.unitMaxValue = found ? found.valorMaximo : 0;
+
+  if (state.catalog.length === 0) {
+    document.getElementById('app').innerHTML = '<div class="loading"><div class="spinner"></div>Carregando catálogo...</div>';
+    google.script.run.withSuccessHandler(function(cat) {
+      state.catalog = cat;
+      state.step = 2; render();
+    }).withFailureHandler(function(e) {
+      alert('Erro ao carregar catálogo: ' + e.message);
+    }).getCatalog();
+  } else {
+    state.step = 2; render();
+  }
+}
+
+// ─── STEP 2 ───────────────────────────────────────────────────────────────────
+
+var _activeCat = 'Todos';
+var _search = '';
+
+function renderStep2() {
+  var cats = ['Todos','Insumos','Laticínios','Descartáveis','Material de Limpeza','Bebidas','Lanches'];
+  var selCount = Object.keys(state.selected).length;
+
+  var tabs = '<div class="cat-tabs">' +
+    cats.map(function(c) {
+      return '<button class="cat-tab' + (_activeCat===c?' active':'') + '" onclick="setCat(\'' + c + '\')">' + c + '</button>';
+    }).join('') + '</div>';
+
+  var search = '<div class="search-wrap"><span class="search-icon">&#128269;</span>' +
+    '<input type="text" id="searchInput" placeholder="Buscar produto..." value="' + esc(_search) + '" oninput="onSearch(this.value)"></div>';
+
+  var counter = '<div class="counter-bar"><span>Produtos selecionados: <strong id="selCounter">' + selCount + '</strong></span>' +
+    '<span id="selBadge" style="font-size:.78rem;color:#2563eb;display:' + (selCount>0?'':'none') + '">' + selCount + ' item(s)</span></div>';
+
+  var filtered = state.catalog.filter(function(p) {
+    var catOk = _activeCat === 'Todos' || p.cat === _activeCat;
+    var srchOk = !_search || p.nome.toLowerCase().indexOf(_search.toLowerCase()) >= 0;
+    return catOk && srchOk;
+  });
+
+  var grouped = {};
+  filtered.forEach(function(p) {
+    if (!grouped[p.cat]) grouped[p.cat] = [];
+    grouped[p.cat].push(p);
+  });
+
+  var list = '';
+  if (filtered.length === 0) {
+    list = '<div class="empty-state">Nenhum produto encontrado.</div>';
+  } else {
+    Object.keys(grouped).forEach(function(cat) {
+      list += '<div class="cat-section"><div class="cat-section-title">' + cat + '</div><div class="product-list">';
+      grouped[cat].forEach(function(p) {
+        var key = itemKey(p);
+        var safeKey = key.replace(/\W/g,'_');
+        var checked = state.selected[key] ? 'checked' : '';
+        var selClass = state.selected[key] ? ' selected' : '';
+        list += '<div class="product-item' + selClass + '" data-item-key="' + safeKey + '" onclick="toggleItem(\'' + key + '\')">' +
+          '<input type="checkbox" ' + checked + ' onclick="event.stopPropagation();toggleItem(\'' + key + '\')">' +
+          '<div class="product-info">' +
+          '<div class="product-name">' + esc(p.nome) + '</div>' +
+          (p.cod ? '<div class="product-meta">Cód: ' + p.cod + '</div>' : '') +
+          '</div><span class="und-badge">' + p.und + '</span></div>';
+      });
+      list += '</div></div>';
+    });
+  }
+
+  var warn = selCount === 0 ? '<div class="alert alert-warn">Selecione ao menos um produto para continuar.</div>' : '';
+
+  return '<div class="card"><div class="card-title">Selecione os Produtos</div>' +
+    tabs + search + counter + list +
+    warn +
+    '<div class="btn-row">' +
+    '<button class="btn btn-secondary" onclick="goBack()">← Voltar</button>' +
+    '<button id="btnNext2" class="btn btn-primary" onclick="goStep3()" ' + (selCount===0?'disabled':'') + '>Informar Quantidades →</button>' +
+    '</div></div>';
+}
+
+function setCat(c) { _activeCat = c; render(); }
+function onSearch(v) {
+  _search = v;
+  render();
+  var si = document.getElementById('searchInput');
+  if (si) {
+    si.focus();
+    var len = si.value.length;
+    si.setSelectionRange(len, len);
+  }
+}
+
+function toggleItem(key) {
+  var p = state.catalog.find(function(x) { return itemKey(x) === key; });
+  if (!p) return;
+  if (state.selected[key]) {
+    delete state.selected[key];
+    delete state.quantities[key];
+  } else {
+    state.selected[key] = p;
+  }
+  var isSelected = !!state.selected[key];
+  var safeKey = key.replace(/\W/g,'_');
+  var el = document.querySelector('[data-item-key="' + safeKey + '"]');
+  if (el) {
+    el.classList.toggle('selected', isSelected);
+    el.querySelector('input[type=checkbox]').checked = isSelected;
+  }
+  var count = Object.keys(state.selected).length;
+  var cEl = document.getElementById('selCounter');
+  if (cEl) cEl.textContent = count;
+  var badge = document.getElementById('selBadge');
+  if (badge) { badge.textContent = count + ' item(s)'; badge.style.display = count > 0 ? '' : 'none'; }
+  var btn = document.getElementById('btnNext2');
+  if (btn) btn.disabled = count === 0;
+}
+
+function goStep3() {
+  if (Object.keys(state.selected).length === 0) return;
+  state.step = 3; render();
+}
+
+// ─── STEP 3 ───────────────────────────────────────────────────────────────────
+
+function renderStep3() {
+  var items = Object.values(state.selected);
+  var grouped = {};
+  items.forEach(function(p) {
+    if (!grouped[p.cat]) grouped[p.cat] = [];
+    grouped[p.cat].push(p);
+  });
+
+  var html = '<div class="card"><div class="card-title">Informe as Quantidades</div>' +
+    renderBudgetBar() +
+    '<div class="qty-list">';
+
+  Object.keys(grouped).forEach(function(cat) {
+    html += '<div class="cat-section-title" style="margin:14px 0 8px;">' + cat + '</div>';
+    grouped[cat].forEach(function(p) {
+      var key = itemKey(p);
+      var safeKey = key.replace(/\W/g,'_');
+      var cur = state.quantities[key] || '';
+      var price = getItemPrice(p);
+      var priceMeta = price > 0 ? ' · ' + fmtMoeda(price) + '/' + p.und : '';
+
+      html += '<div class="qty-item" data-qty-key="' + safeKey + '">' +
+        '<div class="qty-product">' +
+        '<div class="product-name">' + esc(p.nome) + '</div>' +
+        '<div class="product-meta">' + p.und + (p.cod ? ' · Cód: ' + p.cod : '') + priceMeta + '</div>' +
+        '</div>' +
+        '<input class="qty-input" type="number" min="0" step="0.5" ' +
+        'value="' + esc(String(cur)) + '" placeholder="Quantidade" ' +
+        'oninput="onQtyInput(\'' + key + '\',this.value)">' +
+        '</div>';
+    });
+  });
+
+  html += '</div><div class="btn-row">' +
+    '<button class="btn btn-secondary" onclick="goBack()">← Voltar</button>' +
+    '<button class="btn btn-primary" onclick="goStep4()">Revisar →</button>' +
+    '</div></div>';
+
+  return html;
+}
+
+function onQtyInput(key, v) {
+  state.quantities[key] = v;
+  updateBudgetBar();
+}
+
+function goStep4() {
+  var items = Object.values(state.selected);
+  var missing = items.filter(function(p) {
+    var k = itemKey(p);
+    return !state.quantities[k] || parseQty(state.quantities[k]) <= 0;
+  });
+  if (missing.length > 0) {
+    return alert('Informe a quantidade de todos os produtos selecionados.\nFaltando: ' + missing.slice(0,3).map(function(p){return p.nome;}).join(', ') + (missing.length>3?'...':''));
+  }
+  state.step = 4; render();
+}
+
+// ─── STEP 4 ───────────────────────────────────────────────────────────────────
+
+function renderStep4() {
+  var items = Object.values(state.selected);
+  var grouped = {};
+  items.forEach(function(p) {
+    if (!grouped[p.cat]) grouped[p.cat] = [];
+    grouped[p.cat].push(p);
+  });
+
+  var header = '<div class="review-header">' +
+    '<div class="review-info"><div class="label">Unidade</div><div class="value">' + esc(state.unidade) + '</div></div>' +
+    '<div class="review-info"><div class="label">Data do Pedido</div><div class="value">' + fmtDate(state.dataPedido) + '</div></div>' +
+    '<div class="review-info"><div class="label">Data de Entrega</div><div class="value">' + fmtDate(state.dataEntrega) + '</div></div>' +
+    '</div>';
+
+  var calc = calcTotal();
+  var hasSubtotals = calc.hasPrice;
+
+  var thSubtotal = hasSubtotals ? '<th>Subtotal</th>' : '';
+  var table = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="review-table"><thead><tr>' +
+    '<th>Cód</th><th>Produto</th><th>Und</th><th>Qtd</th>' + thSubtotal +
+    '</tr></thead><tbody>';
+
+  Object.keys(grouped).forEach(function(cat) {
+    var colspan = hasSubtotals ? '5' : '4';
+    table += '<tr class="cat-header"><td colspan="' + colspan + '">' + cat + '</td></tr>';
+    grouped[cat].forEach(function(p) {
+      var key = itemKey(p);
+      var qty = parseQty(state.quantities[key] || 0);
+      var price = getItemPrice(p);
+      var subtotal = price > 0 ? price * qty : 0;
+      var subtotalCell = hasSubtotals ? '<td>' + (subtotal > 0 ? fmtMoeda(subtotal) : '—') + '</td>' : '';
+      table += '<tr><td>' + (p.cod||'-') + '</td><td>' + esc(p.nome) + '</td><td>' + p.und + '</td><td><strong>' + esc(String(state.quantities[key]||'')) + '</strong></td>' + subtotalCell + '</tr>';
+    });
+  });
+
+  if (hasSubtotals) {
+    table += '<tr class="total-row"><td colspan="4">Total do Pedido</td><td>' + fmtMoeda(calc.total) + '</td></tr>';
+  }
+
+  table += '</tbody></table></div>';
+
+  var obs = '<div class="form-row" style="margin-top:20px;">' +
+    '<label>Observações (opcional)</label>' +
+    '<textarea id="f-obs" rows="3" placeholder="Alguma observação para este pedido...">' + esc(state.observacoes) + '</textarea>' +
+    '</div>';
+
+  return '<div class="card"><div class="card-title">Revisão do Pedido</div>' +
+    header +
+    renderBudgetBar() +
+    table + obs +
+    '<div class="btn-row">' +
+    '<button class="btn btn-secondary" onclick="goBack()">← Voltar e Editar</button>' +
+    '<button class="btn btn-success" id="btnEnviar" onclick="submitForm()">&#10003; Enviar Pedido</button>' +
+    '</div></div>';
+}
+
+function submitForm() {
+  var obs = document.getElementById('f-obs');
+  if (obs) state.observacoes = obs.value.trim();
+
+  var btn = document.getElementById('btnEnviar');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+
+  var calc = calcTotal();
+
+  var itens = Object.values(state.selected).map(function(p) {
+    var key = itemKey(p);
+    var qty = parseQty(state.quantities[key] || 0);
+    var price = getItemPrice(p);
+    var subtotal = price > 0 ? parseFloat((price * qty).toFixed(2)) : null;
+    return {
+      cod: p.cod,
+      nome: p.nome,
+      und: p.und,
+      cat: p.cat,
+      qtd: state.quantities[key],
+      subtotal: subtotal
+    };
+  });
+
+  var payload = {
+    unidade: state.unidade,
+    dataPedido: fmtDate(state.dataPedido),
+    dataEntrega: fmtDate(state.dataEntrega),
+    observacoes: state.observacoes,
+    email: state.userEmail,
+    totalPedido: calc.total > 0 ? parseFloat(calc.total.toFixed(2)) : null,
+    itens: itens
+  };
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      state.lastResult = res;
+      state.step = 5; render();
+    })
+    .withFailureHandler(function(e) {
+      btn.disabled = false; btn.textContent = '✓ Enviar Pedido';
+      alert('Erro ao enviar: ' + e.message);
+    })
+    .processForm(payload);
+}
+
+// ─── STEP 5 ───────────────────────────────────────────────────────────────────
+
+function renderStep5() {
+  var r = state.lastResult || {};
+  var calc = calcTotal();
+  var totalLine = calc.total > 0 ? '<p><strong>Total do Pedido:</strong> ' + fmtMoeda(calc.total) + '</p>' : '';
+  return '<div class="card"><div class="success-box">' +
+    '<div class="success-icon">&#9989;</div>' +
+    '<div class="success-title">Pedido Enviado!</div>' +
+    '<div class="success-sub">O pedido foi registrado com sucesso na planilha.</div>' +
+    '<div class="success-detail">' +
+    '<p><strong>Unidade:</strong> ' + esc(state.unidade) + '</p>' +
+    '<p><strong>Data do Pedido:</strong> ' + fmtDate(state.dataPedido) + '</p>' +
+    '<p><strong>Data de Entrega:</strong> ' + fmtDate(state.dataEntrega) + '</p>' +
+    '<p><strong>Produtos:</strong> ' + (r.total||'') + ' itens</p>' +
+    totalLine +
+    '<p><strong>Registrado em:</strong> ' + (r.ts||'') + '</p>' +
+    '</div>' +
+    '<button class="btn btn-outline" onclick="resetForm()">+ Fazer Novo Pedido</button>' +
+    '</div></div>';
+}
+
+function resetForm() {
+  state = {
+    step: 1, unidade: '', unitMaxValue: 0,
+    dataPedido: '', dataEntrega: '', observacoes: '',
+    userEmail: state.userEmail,
+    catalog: state.catalog,
+    unidades: state.unidades,
+    precos: state.precos,
+    selected: {}, quantities: {}, lastResult: null
+  };
+  _activeCat = 'Todos'; _search = '';
+  render();
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+
+function goBack() {
+  if (state.step > 1) { state.step--; render(); }
+}
+
+function bindStep() {
+  if (window.innerWidth > 600) {
+    var si = document.getElementById('searchInput');
+    if (si) si.focus();
+  }
+}
+
+function esc(s) {
+  return String(s||'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ─── INICIALIZAÇÃO ────────────────────────────────────────────────────────────
+
+var _loadedUnidades = false;
+var _loadedPrecos = false;
+
+function tryRenderAfterLoad() {
+  if (_loadedUnidades && _loadedPrecos) {
+    state.step = 1;
+    render();
+  }
+}
+
+if (typeof google !== 'undefined' && google.script) {
+  // captura email em background sem bloquear
+  google.script.run
+    .withSuccessHandler(function(email) { state.userEmail = email || ''; })
+    .withFailureHandler(function() {})
+    .getUserEmail();
+
+  // carrega unidades
+  google.script.run
+    .withSuccessHandler(function(data) {
+      state.unidades = data || [];
+      _loadedUnidades = true;
+      tryRenderAfterLoad();
+    })
+    .withFailureHandler(function(e) {
+      state.unidades = [];
+      _loadedUnidades = true;
+      tryRenderAfterLoad();
+      console.warn('Erro ao carregar unidades:', e.message);
+    })
+    .getUnidades();
+
+  // carrega preços
+  google.script.run
+    .withSuccessHandler(function(data) {
+      state.precos = data || [];
+      buildPrecosMap(state.precos);
+      _loadedPrecos = true;
+      tryRenderAfterLoad();
+    })
+    .withFailureHandler(function(e) {
+      state.precos = [];
+      _loadedPrecos = true;
+      tryRenderAfterLoad();
+      console.warn('Erro ao carregar preços:', e.message);
+    })
+    .getPrecos();
+} else {
+  // ambiente de preview/desenvolvimento sem GAS
+  state.step = 1;
+  render();
+}
+</script>
+</body>
+</html>
